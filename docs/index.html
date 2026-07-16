@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Myapp - Debug Impression</title>
+    <style>
+        :root {
+            --bg-color: #242424;
+            --text-color: #e0e0e0;
+            --accent-color: #00f3ff;
+            --shadow-dark: #161616;
+            --shadow-light: #323232;
+        }
+        body { background-color: var(--bg-color); color: var(--text-color); font-family: sans-serif; padding: 20px; display: flex; flex-direction: column; align-items: center; }
+        .card { background: var(--bg-color); border-radius: 16px; padding: 20px; margin-bottom: 20px; width: 100%; max-width: 400px; box-shadow: 8px 8px 16px var(--shadow-dark), -8px -8px 16px var(--shadow-light); }
+        button { width: 100%; padding: 15px; background: var(--bg-color); color: var(--accent-color); border: none; border-radius: 12px; font-weight: bold; box-shadow: 6px 6px 12px var(--shadow-dark), -6px -6px 12px var(--shadow-light); cursor: pointer; }
+        button:disabled { opacity: 0.5; }
+        #log-area { width: 100%; height: 150px; background: #1a1a1a; border: none; color: #888; font-size: 0.8rem; padding: 10px; border-radius: 8px; }
+        h1 { font-size: 1.2rem; color: var(--accent-color); text-align: center; }
+    </style>
+
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#4b6cb7">
+<link rel="apple-touch-icon" href="icon.png"></head>
+<body>
+
+<div class="card">
+    <h1>Myapp Debugger</h1>
+    <input type="file" id="csv-file" accept=".csv, text/csv">
+</div>
+
+<button id="btn-print" disabled>Connecter & Imprimer</button>
+
+<div class="card">
+    <textarea id="log-area" readonly placeholder="Log..."></textarea>
+</div>
+
+<script>
+    let currentCsvText = "";
+    const logArea = document.getElementById('log-area');
+    
+    // Fonction de log pour afficher dans la page
+    const log = (msg) => {
+        const time = new Date().toLocaleTimeString();
+        logArea.value = `[${time}] ${msg}\n` + logArea.value;
+        console.log(`[${time}] ${msg}`);
+    };
+
+    document.getElementById('csv-file').addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            currentCsvText = event.target.result;
+            document.getElementById('btn-print').disabled = false;
+            log("Fichier chargé : " + file.name);
+        };
+        reader.onerror = () => log("Erreur lecture fichier.");
+        reader.readAsText(file, 'UTF-8');
+    });
+
+    document.getElementById('btn-print').addEventListener('click', async () => {
+        if (!navigator.bluetooth) {
+            log("ERREUR: Bluetooth non supporté.");
+            return;
+        }
+
+        try {
+            log("Recherche d'appareil...");
+            // Mode DEBUG : on accepte tout pour identifier l'appareil
+            const device = await navigator.bluetooth.requestDevice({
+                acceptAllDevices: true,
+                optionalServices: ['000018f0-0000-1000-8000-00805f9b34fb', '0000180f-0000-1000-8000-00805f9b34fb']
+            });
+            
+            log("Sélectionné : " + device.name);
+            const server = await device.gatt.connect();
+            log("Connexion GATT réussie.");
+            
+            // Si on arrive ici, le Bluetooth est OK. 
+            // C'est maintenant que tu dois ajouter ta logique d'envoi de commande ESC/POS
+            log("Appareil prêt. Envoi commande...");
+            
+        } catch (err) {
+            log("ERREUR: " + err.name + " - " + err.message);
+        }
+    });
+</script>
+
+<script>if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js'));}</script>
+</body>
+</html>
